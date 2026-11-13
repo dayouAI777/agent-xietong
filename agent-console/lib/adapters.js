@@ -360,10 +360,40 @@ async function codexRespond(prompt, api, model, retried) {
   return out.trim();
 }
 
+function netErrMsg(error) {
+  const cause = error && error.cause;
+  const c = cause ? (cause.code || cause.message || String(cause)) : '';
+  return String(error.message || error) + (c ? '（' + c + '）' : '');
+}
+
+// undici 的网络层错误：值得退避重试的那种
+function isNetError(error) {
+  const msg = String((error && error.message) || '');
+  const code = String((error && error.cause && (error.cause.code || error.cause.message)) || '');
+  if (/fetch failed|terminated|socket hang up/i.test(msg)) return true;
+  return /UND_ERR|ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|EPIPE/.test(code);
+}
+
 async function runCodexHttp(ctx, api) {
   const prompt = String(ctx.task.prompt || ctx.task.title || '').trim();
   api.log('本地 codex（HTTP responses，模型 gpt-6.1-sol）已接收任务', 'info');
-  const text = await codexRespond(prompt, api, ctx.task.codexModel, false);
+  // 网络瞬断退避重试：0/2s/5s/10s，只对网络层错误重试，4xx 业务错误直接抛
+  const delays = [0, 2000, 5000, 10000];
+  let text = '';
+  for (let i = 0; i < delays.length; i++) {
+    if (delays[i]) {
+      api.log('codex 网络瞬断（' + i + '/' + (delays.length - 1) + '），' + (delays[i] / 1000) + ' 秒后重试', 'warn');
+      await new Promise((r) => setTimeout(r, delays[i]));
+    }
+    try {
+      text = await codexRespond(prompt, api, ctx.task.codexModel, false);
+      break;
+    } catch (error) {
+      if (!isNetError(error) || i === delays.length - 1) {
+        throw new Error('codex 请求失败：' + netErrMsg(error));
+      }
+    }
+  }
   api.artifact('codex回复.md', text);
   api.progress(100);
   return { status: 'done', result: text.slice(0, 4000) };

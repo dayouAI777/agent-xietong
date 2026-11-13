@@ -167,6 +167,9 @@ def main():
         except Exception as e:
             print(f"  FAIL {e}")
     print(f"完成 {ok}/{len(prompts)}")
+    # 一张都没出就非 0 退出，让内核（看板）正确标记 failed，而不是假 done
+    if ok == 0:
+        sys.exit(1)
 
     # 出图后自动重建提示词总索引
     if ok:

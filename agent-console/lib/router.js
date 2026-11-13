@@ -40,6 +40,13 @@ function parseCommand(raw) {
     'node': /^node$/
   };
   const IMAGE_VERB = /^(?:生图|画张?|画一幅|来一张|draw|image|生成一张)/i;
+  // 宽松版：点名某个 agent 但开口就是做图 → 该 agent 基本不能生图，转朽木
+  // 只看开头 16 字，排除写脚本/代码这类误伤
+  function looksLikeImageAsk(rest) {
+    const head = String(rest || '').slice(0, 16);
+    if (/(脚本|代码|程序|函数|正则|接口|文档|分析|风格|描述|识别|这张|图片中|图片里|流程图|架构图|示意图|思维导图|文字版|大纲)/.test(head)) return false;
+    return /(做一?个?图|生图|画一?(张|幅|个)?|图片|海报|插画|壁纸)/.test(head);
+  }
   const prefixed = text.match(/^(?:让|用|叫|派|给)\s*[:：]?\s*([\s\S]+)$/);
   const head = prefixed ? prefixed[1] : text;
   // 首词：英文字母串（含连字符）或特定中文 agent 词
@@ -49,11 +56,13 @@ function parseCommand(raw) {
     const rest = cut(wordMatch[2]);
     for (const [agentId, re] of Object.entries(AGENT_WORDS)) {
       if (re.test(word)) {
-        if (agentId === 'imagegen' || IMAGE_VERB.test(rest)) {
+        if (agentId === 'imagegen') {
           return { agentId, prompt: rest || word, title: (word + ' ' + rest).slice(0, 24),
-            note: agentId === 'imagegen'
-              ? '点名朽木 → 朽木直连（零积分）'
-              : '点名 ' + agentId + ' 生图 → 用该 agent 自己的生图能力，不走朽木' };
+            note: '点名朽木 → 朽木直连（零积分）' };
+        }
+        if (IMAGE_VERB.test(rest) || looksLikeImageAsk(rest)) {
+          return { agentId: 'imagegen', prompt: rest || word, title: (rest || word).slice(0, 24),
+            note: '点名 ' + word + ' 做图，但它不能生图 → 已转朽木通道（零积分）' };
         }
         return { agentId, prompt: rest, title: rest.slice(0, 24), note: '点名 agent：' + agentId };
       }
