@@ -26,8 +26,7 @@ function parseCommand(raw) {
   // 点名 agent：让/用/叫/派/给 + agent 词开头 → 归被点名的 agent，它的能力优先
   // 例：codex 生图 xxx（走 codex 自己的生图能力，不走朽木）；用朽木画 xxx（才走朽木）
   const AGENT_WORDS = {
-    'codex-http': /^(codex(?:-run|-http)?|codex执行版)$/i,
-    'codex-http': /^(codex(?:问答|qa))?$/i,
+    'codex-http': /^(codex(?:-run|-http)?|codex执行版|codex问答|codex-qa)$/i,
     'deepseek': /^(deepseek|dsh|DSH)$/i,
     'doubao': /^(豆包|豆包工作|doubao)$/i,
     'imagegen': /^(朽木生图|朽木|朽木通道)$/,

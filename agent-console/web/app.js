@@ -110,6 +110,62 @@ function renderAgents() {
       : '');
 }
 
+// 任务指令区快捷键：点名 agent。插入行首 @alias（router 只认行首 @）
+const QUICK_AGENTS = [
+  { id: 'shell', tag: 'shell', alias: 'shell', tip: '本地命令，零积分' },
+  { id: 'codex-http', tag: 'codex', alias: 'codex', tip: '本地 codex 通道：写代码 / 推理' },
+  { id: 'imagegen', tag: '生图', alias: 'imagegen', tip: '朽木生图，零积分' },
+  { id: 'analyst', tag: '推演', alias: 'analyst', tip: '风险 / 方案推演' },
+  { id: 'node', tag: 'node', alias: 'node', tip: '直接跑 Node 源码' },
+  { id: 'python', tag: 'py', alias: 'python', tip: '直接跑 Python 源码' }
+];
+
+function renderChips() {
+  const box = $('cmdChips');
+  if (!box) return;
+  const byId = {};
+  for (const a of state.agents) byId[a.id] = a;
+  box.innerHTML = '<span class="chips-label">直指</span>' + QUICK_AGENTS.map((q) => {
+    const a = byId[q.id];
+    const ok = !!(a && a.available);
+    return '<button class="chip' + (ok ? '' : ' off') + '" data-agent="' + esc(q.id) + '"' +
+      ' title="' + esc(q.tip) + (ok ? '' : '（当前不可用）') + '">' +
+      '<span class="chip-dot"></span>' + esc(q.tag) + '</button>';
+  }).join('');
+  syncChipState();
+}
+
+function syncChipState() {
+  const box = $('cmdChips');
+  const input = $('cmdInput');
+  if (!box || !input) return;
+  const m = String(input.value || '').match(/^\s*@([a-zA-Z0-9_-]+)/);
+  const active = m ? m[1] : '';
+  box.querySelectorAll('.chip').forEach((el) => {
+    const q = QUICK_AGENTS.find((x) => x.id === el.dataset.agent);
+    el.classList.toggle('on', !!q && (active === q.alias || active === q.id));
+  });
+}
+
+function applyQuickAgent(agentId) {
+  const q = QUICK_AGENTS.find((x) => x.id === agentId);
+  const input = $('cmdInput');
+  if (!q || !input) return;
+  const m = input.value.match(/^\s*@([a-zA-Z0-9_-]+)\s*/);
+  const current = m ? m[1] : '';
+  const rest = m ? input.value.slice(m[0].length) : input.value.replace(/^\s+/, '');
+  // 再点一次同一个 → 取消点名
+  input.value = (current === q.alias || current === q.id)
+    ? rest
+    : '@' + q.alias + (rest ? ' ' + rest : ' ');
+  input.focus();
+  const n = input.value.length;
+  input.setSelectionRange(n, n);
+  syncChipState();
+  const box = $('cmdResult');
+  if (box) box.hidden = true;
+}
+
 function renderFilters() {
   $('filters').innerHTML = FILTERS.map((f) =>
     '<button class="filter ' + (state.filter === f.key ? 'active' : '') + '" data-filter="' + f.key + '">' + f.label + '</button>'
@@ -315,6 +371,7 @@ async function refresh() {
     state.stats = data.stats;
     renderMetrics();
     renderAgents();
+    renderChips();
     renderTasks();
     renderFeed();
     renderOrders();
@@ -527,6 +584,7 @@ async function sendCommand() {
     const r = await post('/api/command', { text });
     box.innerHTML = '路由结果：' + esc(r.note) + ' → 任务 <b>' + esc(r.taskId) + '</b>（agent: ' + esc(r.agentId) + '），结果出来会出现在左侧「最近事件」。';
     input.value = '';
+    syncChipState();
     await refresh();
   } catch (error) {
     box.innerHTML = '<span style="color:#B4231C">解析失败：' + esc(error.message) + '</span>';
@@ -652,6 +710,12 @@ function bindEvents() {
     } catch (error) { window.alert('清理失败：' + error.message); }
   });
   $('cmdSend').addEventListener('click', sendCommand);
+  $('cmdChips').addEventListener('click', (e) => {
+    const chip = e.target.closest('.chip');
+    if (!chip || chip.classList.contains('off')) return;
+    applyQuickAgent(chip.dataset.agent);
+  });
+  $('cmdInput').addEventListener('input', syncChipState);
   $('ordSend').addEventListener('click', sendOrder);
   $('ordInput').addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendOrder(); }

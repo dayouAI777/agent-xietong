@@ -132,6 +132,24 @@ code, .mono { font-family: var(--mono); }
   font-size: 12.5px; color: var(--muted); padding: 2px 4px 0;
 }
 
+.cmd-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.cmd-chips .chips-label { font-size: 11px; color: var(--faint); margin-right: 2px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid var(--border-strong); background: var(--surface);
+  color: var(--text); border-radius: 999px; padding: 4px 10px 4px 8px;
+  font-size: 12px; line-height: 1; cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.chip .chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border-strong); flex: none; }
+.chip:hover { border-color: var(--purple); background: var(--purple-soft); color: var(--purple); }
+.chip:hover .chip-dot { background: var(--purple); }
+.chip.on { border-color: var(--purple); background: var(--purple-soft); color: var(--purple); }
+.chip.on .chip-dot { background: var(--purple); }
+.chip.off { opacity: .4; cursor: not-allowed; }
+.chip.off:hover { border-color: var(--border-strong); background: var(--surface); color: var(--text); }
+.chip.off:hover .chip-dot { background: var(--border-strong); }
+
 .order-box { border-color: #C9B8E8; background: #FBF9FE; }
 .order-label { background: #EFE8FA; color: #5A3E94; }
 .order-box textarea {
