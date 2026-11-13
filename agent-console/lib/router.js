@@ -27,7 +27,8 @@ function parseCommand(raw) {
   // 例：codex 生图 xxx（走 codex 自己的生图能力，不走朽木）；用朽木画 xxx（才走朽木）
   const AGENT_WORDS = {
     'codex-http': /^(codex(?:-run|-http)?|codex执行版|codex问答|codex-qa)$/i,
-    'deepseek': /^(deepseek|dsh|DSH)$/i,
+    'dsh': /^(dsh|本地ds|本地dsh)$/i,
+    'deepseek': /^(deepseek)$/i,
     'doubao': /^(豆包|豆包工作|doubao)$/i,
     'imagegen': /^(朽木生图|朽木|朽木通道)$/,
     'analyst': /^(analyst|推演agent)$/i,

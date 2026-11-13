@@ -114,6 +114,7 @@ function renderAgents() {
 const QUICK_AGENTS = [
   { id: 'shell', tag: 'shell', alias: 'shell', tip: '本地命令，零积分' },
   { id: 'codex-http', tag: 'codex', alias: 'codex', tip: '本地 codex 通道：写代码 / 推理' },
+  { id: 'dsh', tag: 'dsh', alias: 'dsh', tip: 'DSH 本地端点，免 key，能跑工具' },
   { id: 'imagegen', tag: '生图', alias: 'imagegen', tip: '朽木生图，零积分' },
   { id: 'analyst', tag: '推演', alias: 'analyst', tip: '风险 / 方案推演' },
   { id: 'node', tag: 'node', alias: 'node', tip: '直接跑 Node 源码' },

@@ -43,10 +43,27 @@ Windows 下工作区根目录有 `launch-console.bat`，双击即启动并打开
 | `生图 一只白色猫` | imagegen（朽木通道） |
 | `codex 写个快排` / 直接说人话 | codex-http（本地 codex 凭证 + HTTP responses） |
 | `豆包 写文案` | doubao（需 ARK key） |
-| `DSH 解释 ACP` / `deepseek xxx` | deepseek（需 API key） |
+| `DSH 列一下目录` / `@dsh xxx` | dsh（DSH 桌面运行时的本地端点，免 key，能跑工具） |
+| `deepseek xxx` | deepseek（DeepSeek 官方 API，需 key） |
 | `@analyst 推演风险` | analyst（本地规则推演） |
 
 未匹配任何规则的句子会交给 codex-http 理解执行（它比规则更懂人话）。
+
+**输入框下方的快捷键**：点 chip 直接在行首插 `@alias`（`shell` / `codex` / `dsh` / `生图` / `推演` / `node` / `py`），再点同一个取消点名；输入框首词是 `@xxx` 时对应 chip 高亮；当前不可用的 agent 置灰。
+
+## DSH 本地端点
+
+DSH 自己起的 HTTP 服务，工作台通过它派单，不需要 key：
+
+| 项 | 值 |
+| --- | --- |
+| 地址 | `http://127.0.0.1:7789`（只绑本机） |
+| 端点文件 | `~/.dsh/endpoint.json` → `{port,pid,started_at}` |
+| 启动 | `cmd /c "%USERPROFILE%\.dsh\endpoint\start.cmd"`（幂等） |
+| 接口 | `GET /v1/health`、`POST /v1/run`、`GET /v1/version` |
+| 免费额度 | 用 DSH 桌面登录凭据（`~/.dsh/.credentials.yaml`），无额外计费 |
+
+限制：单并发（第二个请求 429）；无鉴权，本机任何进程可调；执行在 DSH 自己的 workspace-write 沙箱里，cwd 不是本项目目录；不开机自启，关会话即停。端点没起时工作台会自动拉起一次，失败则在任务错误里给出启动命令。
 
 **右侧「指挥指令」小面板**：同样走路由，能派就当场派单，结果回写到指令下面；派不了的挂成待办。
 

@@ -401,6 +401,103 @@ async function openAiChat(prompt, api, opts) {
   return text;
 }
 
+// ===== DSH 本地端点（DSH 桌面运行时自己起的 HTTP 服务，无需 key） =====
+// 契约：GET /v1/health、POST /v1/run → {ok,text,steps,error}、GET /v1/version
+const DSH_ENDPOINT_FILE = path.join(os.homedir(), '.dsh', 'endpoint.json');
+const DSH_START_CMD = path.join(os.homedir(), '.dsh', 'endpoint', 'start.cmd');
+const dshState = { ok: false, at: 0, port: 0, version: '', models: [], lastErr: '', started: false };
+
+function dshPort() {
+  if (process.env.DSH_PORT) return Number(process.env.DSH_PORT) || 7789;
+  try {
+    const j = JSON.parse(fs.readFileSync(DSH_ENDPOINT_FILE, 'utf8'));
+    if (j && j.port) return Number(j.port);
+  } catch (_) { /* 端点没起过就没有这个文件 */ }
+  return 7789;
+}
+
+function dshBase() { return 'http://127.0.0.1:' + dshPort(); }
+
+async function probeDsh(force) {
+  const now = Date.now();
+  if (!force && now - dshState.at < 15000) return dshState.ok;
+  dshState.at = now;
+  try {
+    const res = await fetch(dshBase() + '/v1/health', { signal: AbortSignal.timeout(2000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const j = await res.json();
+    if (!j.ok) throw new Error('health 返回 ok=false');
+    dshState.ok = true;
+    dshState.port = Number(j.port) || dshPort();
+    dshState.version = String(j.version || '');
+    dshState.models = Array.isArray(j.models) ? j.models : [];
+    dshState.lastErr = '';
+  } catch (error) {
+    dshState.ok = false;
+    dshState.lastErr = error.message;
+  }
+  return dshState.ok;
+}
+
+// 端点没起时拉一次启动脚本（幂等：已在跑会打印 DSH_ENDPOINT 后退出）
+async function ensureDsh(api) {
+  if (await probeDsh(true)) return true;
+  if (dshState.started || !fs.existsSync(DSH_START_CMD)) return false;
+  dshState.started = true;
+  api.log('DSH 端点未运行，正在拉起 ' + DSH_START_CMD, 'warn');
+  try {
+    const child = spawn('cmd', ['/c', DSH_START_CMD], { detached: true, stdio: 'ignore', windowsHide: true });
+    child.unref();
+  } catch (error) {
+    api.log('拉起 DSH 失败：' + error.message, 'error');
+    return false;
+  }
+  for (let i = 0; i < 10; i++) {
+    await new Promise((r) => setTimeout(r, 800));
+    if (await probeDsh(true)) { api.log('DSH 端点已就绪 ' + dshBase(), 'info'); return true; }
+  }
+  return false;
+}
+
+async function runDsh(ctx, api) {
+  const base = dshBase();
+  const prompt = String(ctx.task.prompt || ctx.task.title || '');
+  const timeoutMs = Math.max(5000, Number(process.env.DSH_TIMEOUT_MS || 600000));
+  if (!(await ensureDsh(api))) {
+    throw new Error('DSH 端点未运行（' + base + '）。启动：cmd /c "%USERPROFILE%\\.dsh\\endpoint\\start.cmd"');
+  }
+  api.log('DSH 本地端点（' + base + '，' + (dshState.version || '未知版本') + '）已接收任务', 'info');
+
+  const res = await fetch(base + '/v1/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, timeout_ms: timeoutMs }),
+    signal: AbortSignal.timeout(timeoutMs + 30000)
+  });
+  const raw = await res.text();
+  let j;
+  try { j = JSON.parse(raw); }
+  catch (_) { throw new Error('DSH 返回非 JSON（HTTP ' + res.status + '）：' + raw.slice(0, 200)); }
+
+  for (const step of (j.steps || [])) {
+    api.log('DSH 步骤 ' + (step.tool || '?') + '：' + String(step.brief || '').slice(0, 160), 'info');
+  }
+  if (!j.ok) {
+    if (res.status === 429) throw new Error('DSH 正忙（429）：' + (j.error || 'another run is in progress'));
+    if (res.status === 504) throw new Error('DSH 超时（504）：' + (j.error || 'timeout'));
+    throw new Error('DSH 执行失败（HTTP ' + res.status + '）：' + (j.error || '未知错误'));
+  }
+  const text = String(j.text || '').trim();
+  if (!text) throw new Error('DSH 返回空内容');
+  api.artifact('dsh回复.md', text);
+  return { status: 'done', result: text.slice(0, 4000), steps: j.steps || [] };
+}
+
+// 预热 + 定期复查（unref 不阻塞进程退出）
+const dshTimer = setInterval(() => { probeDsh(true).catch(() => {}); }, 15000);
+if (dshTimer.unref) dshTimer.unref();
+probeDsh(true).catch(() => {});
+
 async function runDeepseek(ctx, api) {
   const key = deepseekKey();
   if (!key) throw new Error('未配置 DeepSeek API key（环境变量 DEEPSEEK_API_KEY 或 ' + DEEPSEEK_KEY_FILE + '）');
@@ -629,7 +726,8 @@ const BUILTINS = [
   { id: 'shell', name: '本地命令', kind: 'builtin', color: '#5F5E5A', description: '执行一条 shell 命令，输出即产物（含危险命令拦截）', run: runShell },
   { id: 'node', name: 'Node 脚本', kind: 'builtin', color: '#3B6D11', description: '执行 JS 源码或 .js 文件，可用 AGENT_RUN_DIR 写产物', run: runNode },
   { id: 'python', name: 'Python 脚本', kind: 'builtin', color: '#185FA5', description: '执行 Python 源码或 .py 文件，UTF-8 输出', run: runPython },
-  { id: 'deepseek', name: 'DeepSeek', kind: 'builtin', color: '#1F5FBF', availableWhen: () => !!deepseekKey(), description: 'DeepSeek 官方 API（deepseek-chat），需要 key', run: runDeepseek },
+  { id: 'dsh', name: 'DSH 本地', kind: 'builtin', color: '#1F5FBF', availableWhen: () => dshState.ok, description: 'DSH 桌面运行时的本地 HTTP 端点（127.0.0.1:7789），免 key', run: runDsh },
+  { id: 'deepseek', name: 'DeepSeek API', kind: 'builtin', color: '#1F5FBF', availableWhen: () => !!deepseekKey(), description: 'DeepSeek 官方 API（deepseek-chat），需要 key；没 key 时用上面的 DSH 本地端点', run: runDeepseek },
   { id: 'doubao', name: '豆包方舟', kind: 'builtin', color: '#B45309', availableWhen: () => !!(arkKey() && process.env.DOUBAO_MODEL), description: '火山方舟豆包模型，需要 ARK_API_KEY + 接入点 ID', run: runDoubao }
 ];
 
