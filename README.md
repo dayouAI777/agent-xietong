@@ -80,6 +80,19 @@ node bin/agentctl.js doctor [--apply]             # 体检 / 自动写入探测�
 
 新机器首次启动：跑 `doctor` 看缺什么，按提示装 CLI 或配 key；没有的 agent 在看板上显示 ✘，不影响其他 agent。
 
+## 同步到仓库
+
+GitHub 在本机需要走代理，而且必须用 openssl 后端（Windows 默认 schannel 会 TLS 握手失败）：
+
+```bash
+git config http.sslBackend openssl
+HTTPS_PROXY=http://127.0.0.1:10090 git push
+```
+
+代理端口按本机实际的改（`netstat -ano | findstr LISTENING` 找代理客户端）。
+
+另一台电脑克隆后，先跑 `node bin/agentctl.js doctor`，按提示补 CLI / 配 key。
+
 ## 已知状态
 
 - `codex` / `codex-run`（CLI 直调）：本机 websocket 通道不通，已停用，改走 `codex-http`
