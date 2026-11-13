@@ -337,6 +337,16 @@ code, .mono { font-family: var(--mono); }
 .agent-card .ac-stat { font-size: 11px; color: var(--faint); display: flex; gap: 10px; }
 .agent-card .ac-stat b { font-weight: 500; color: var(--text); }
 
+/* 未就绪 agent：压缩成一块，不占主视图 */
+.agent-offline {
+  margin-top: 12px; padding: 9px 11px; border-radius: 9px;
+  border: 1px dashed var(--border); background: transparent;
+}
+.agent-offline .ao-title { font-size: 11px; color: var(--faint); margin-bottom: 6px; }
+.agent-offline .ao-row { display: flex; gap: 8px; align-items: baseline; padding: 2px 0; }
+.agent-offline .ao-name { font-size: 11px; color: var(--muted); flex-shrink: 0; min-width: 68px; }
+.agent-offline .ao-why { font-size: 11px; color: var(--faint); line-height: 1.5; }
+
 /* 图片大图 */
 .lightbox {
   position: fixed; inset: 0; z-index: 90; background: rgba(20,20,18,.82);

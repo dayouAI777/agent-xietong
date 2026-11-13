@@ -88,18 +88,26 @@ function renderAgents() {
   const avail = state.agents.filter((a) => a.available).length;
   $('agentCount').textContent = avail + ' / ' + state.agents.length + ' 可用';
   $('poolCount').textContent = avail + '/' + state.agents.length;
-  $('agentList').innerHTML = state.agents.map((a) => {
+  const card = (a) => {
     const c = counters[a.id] || { total: 0, running: 0, done: 0 };
-    return '<div class="agent-card ' + (a.available ? '' : 'off') + '">' +
+    return '<div class="agent-card">' +
       '<div class="ac-top"><span class="agent-dot" style="background:' + esc(a.color || '#888') + '"></span>' +
       '<span class="ac-name">' + esc(a.name) + '</span>' +
       '<span class="ac-kind">' + (a.builtin ? 'builtin' : 'external') + '</span></div>' +
       '<div class="ac-desc">' + esc(a.description || '') + '</div>' +
       '<div class="ac-stat"><span>任务 <b>' + c.total + '</b></span><span>运行 <b>' + c.running + '</b></span>' +
-      '<span>完成 <b>' + c.done + '</b></span><span style="margin-left:auto;color:' +
-      (a.available ? 'var(--teal)' : 'var(--faint)') + '">' + (a.available ? '可用' : '未就绪') + '</span></div>' +
+      '<span>完成 <b>' + c.done + '</b></span><span style="margin-left:auto;color:var(--teal)">可用</span></div>' +
       '</div>';
-  }).join('');
+  };
+  const online = state.agents.filter((a) => a.available);
+  const offline = state.agents.filter((a) => !a.available);
+  $('agentList').innerHTML = online.map(card).join('') +
+    (offline.length
+      ? '<div class="agent-offline"><div class="ao-title">未就绪 ' + offline.length + ' 个（缺依赖或需配置）</div>' +
+        offline.map((a) => '<div class="ao-row"><span class="ao-name">' + esc(a.name) + '</span>' +
+          '<span class="ao-why">' + esc((a.description || '未就绪').slice(0, 60)) + '</span></div>').join('') +
+        '</div>'
+      : '');
 }
 
 function renderFilters() {
