@@ -1,0 +1,35 @@
+# ===== 运行时数据（不入库）=====
+agent-console/data/
+agent-console/runs/
+agent-console/inbox/
+gen/out/
+gen/prompts/
+
+# ===== 依赖 / 日志 / 临时 =====
+node_modules/
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# ===== 工作区私有内容 =====
+.workbuddy/
+多agent工作台交接包/
+handoff/
+接手报告*.md
+*.zip
+*.7z
+
+# ===== 敏感信息（绝对不能入库）=====
+.env
+.env.*
+*.pem
+*.key
+密匙*
+*密钥*
+*_key.txt
+auth.json
+credentials*
+.codex/
+.claude/
+.dsh/

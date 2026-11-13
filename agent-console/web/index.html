@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent 指挥台 · 阿Q 统一指挥</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<h2 class="sr-only">多 agent 工作台：任务看板、agent 池状态、实时事件流与人工干预</h2>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark">AQ</div>
+      <div class="brand-text">
+        <h1>Agent 指挥台</h1>
+        <p>CLI 内核为唯一真源 · 阿Q 统一指挥 · 仅本机可访问</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span class="conn" id="conn"><i></i><span>连接中</span></span>
+      <button class="btn" id="agentPoolBtn">Agent 池 <span class="pool-count" id="poolCount"></span></button>
+      <button class="btn" id="globalPause">暂停队列</button>
+      <button class="btn primary" id="newTask">+ 新建任务</button>
+    </div>
+  </header>
+
+  <section class="metrics" id="metrics"></section>
+
+  <section class="command-row">
+    <div class="cmd-box">
+      <div class="cmd-head">
+        <span class="cb-label">任务指令</span>
+        <span class="cmd-hint">Ctrl+Enter 发送 · 解析不了的自动转交阿Q</span>
+      </div>
+      <div class="cmd-body">
+        <textarea id="cmdInput" rows="5" placeholder="直接下命令：&#10;生图 一只在阳光下的白猫&#10;codex 写个快排脚本&#10;跑 node -v&#10;问 今天的日期&#10;@analyst 推演上线风险"></textarea>
+        <button class="btn primary cmd-send" id="cmdSend">发送<br>任务</button>
+      </div>
+      <div class="cmd-result" id="cmdResult" hidden></div>
+    </div>
+
+    <aside class="order-box">
+      <div class="cmd-head">
+        <span class="cb-label order-label">指挥指令</span>
+        <span class="cmd-hint">调度 / 协同 / 优先级</span>
+      </div>
+      <textarea id="ordInput" rows="3" placeholder="下达即执行：跑 node -v / 生图 xxx / @shell: xxx；纯自然语言会挂成待总指挥"></textarea>
+      <button class="btn order-send" id="ordSend">下达</button>
+      <div class="ord-hint" id="ordHint" hidden></div>
+      <div class="order-list" id="ordList"></div>
+    </aside>
+  </section>
+
+  <main class="layout">
+    <section class="panel stream-panel">
+      <div class="panel-head">
+        <h2>最近事件</h2>
+        <div class="stream-tabs">
+          <button class="tab active" data-mode="results">结果</button>
+          <button class="tab" data-mode="raw">原始日志</button>
+        </div>
+        <button class="link-btn" id="clearFeed">清空</button>
+      </div>
+      <div class="feed" id="feed"></div>
+    </section>
+
+    <section class="panel board-panel">
+      <div class="panel-head">
+        <h2>任务看板</h2>
+        <button class="link-btn" id="purgeDone">清理已结束</button>
+      </div>
+      <div class="filters" id="filters"></div>
+      <div class="task-list" id="taskList"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span class="footer-label">CLI 速查（点命令复制）</span>
+    <code class="cli" data-cmd="node bin/agentctl.js status">status</code>
+    <code class="cli" data-cmd="node bin/agentctl.js dispatch --agent analyst --prompt &quot;你的指令&quot;">dispatch</code>
+    <code class="cli" data-cmd="node bin/agentctl.js logs --follow">logs --follow</code>
+    <code class="cli" data-cmd="node bin/agentctl.js complete &lt;taskId&gt; --result &quot;结果&quot;">complete</code>
+    <span class="footer-right">数据落盘：data/tasks/ · data/events.jsonl</span>
+  </footer>
+</div>
+
+<!-- Agent 池（按钮召唤） -->
+<div class="modal" id="agentModal" hidden>
+  <div class="modal-backdrop" data-close="1"></div>
+  <div class="modal-card wide">
+    <div class="modal-head">
+      <h2>Agent 池 <span class="counter" id="agentCount"></span></h2>
+      <button class="link-btn" data-close="1">关闭</button>
+    </div>
+    <div class="modal-body">
+      <div class="agent-list" id="agentList"></div>
+      <div class="panel-note">
+        外部 CLI 装上后会自动出现在这里。新增 adapter 只需改 <code>config/agents.json</code>，内核不用动。
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-backdrop" data-close="1"></div>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h2 id="modalTitle">新建任务</h2>
+      <button class="link-btn" data-close="1">关闭</button>
+    </div>
+    <div class="modal-body">
+      <label>指派 agent
+        <select id="fAgent"></select>
+      </label>
+      <label>任务标题
+        <input id="fTitle" type="text" placeholder="例如：梳理上线检查清单">
+      </label>
+      <label>指令 / prompt
+        <textarea id="fPrompt" rows="7" placeholder="写清楚要 agent 做什么；shell 填命令，node/python 填源码"></textarea>
+      </label>
+      <label>依赖任务 ID（可选，逗号分隔）
+        <input id="fDepends" type="text" placeholder="例如 txxxx,tyyyy">
+      </label>
+      <div class="modal-error" id="fError"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" data-close="1">取消</button>
+      <button class="btn primary" id="fSubmit">提交派单</button>
+    </div>
+  </div>
+</div>
+
+<!-- 图片大图查看 -->
+<div class="lightbox" id="lightbox" hidden>
+  <img id="lightboxImg" src="" alt="">
+  <div class="lb-caption" id="lightboxCap"></div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

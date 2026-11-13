@@ -1,0 +1,127 @@
+{
+  "concurrency": 3,
+  "defaults": {
+    "timeoutMs": 120000,
+    "maxRetries": 1
+  },
+  "external": [
+    {
+      "id": "claude-code",
+      "name": "Claude Code",
+      "command": "claude",
+      "args": [
+        "-p",
+        "{{prompt}}",
+        "--output-format",
+        "text"
+      ],
+      "inputMode": "argv",
+      "detect": "claude",
+      "enabled": false,
+      "description": "需要 cc-studio 中转 127.0.0.1:18100 在跑，当前未启动"
+    },
+    {
+      "id": "codex",
+      "name": "Codex CLI",
+      "command": "${APPDATA}/npm/node_modules/@openai/codex/node_modules/@openai/codex-win32-x64/vendor/x86_64-pc-windows-msvc/bin/codex.exe",
+      "args": [
+        "exec",
+        "--skip-git-repo-check",
+        "--color",
+        "never",
+        "--json",
+        "-s",
+        "read-only",
+        "-o",
+        "{{outputFile}}",
+        "-"
+      ],
+      "inputMode": "stdin",
+      "outputMode": "jsonl",
+      "detect": "codex",
+      "enabled": false,
+      "env": {
+        "HTTPS_PROXY": "",
+        "HTTP_PROXY": "",
+        "https_proxy": "",
+        "http_proxy": ""
+      },
+      "description": "CLI 的 websocket 通道在本机不通（TLS eof + models 刷新超时），改用 codex-http"
+    },
+    {
+      "id": "codex-run",
+      "name": "Codex CLI 执行版",
+      "command": "${APPDATA}/npm/node_modules/@openai/codex/node_modules/@openai/codex-win32-x64/vendor/x86_64-pc-windows-msvc/bin/codex.exe",
+      "args": [
+        "exec",
+        "--skip-git-repo-check",
+        "--color",
+        "never",
+        "--json",
+        "-s",
+        "danger-full-access",
+        "-o",
+        "{{outputFile}}",
+        "-"
+      ],
+      "inputMode": "stdin",
+      "outputMode": "jsonl",
+      "detect": "codex",
+      "enabled": false,
+      "cwd": "${PROJECT}",
+      "artifactScan": [
+        "~/.codex/generated_images"
+      ],
+      "env": {
+        "HTTPS_PROXY": "",
+        "HTTP_PROXY": "",
+        "https_proxy": "",
+        "http_proxy": ""
+      },
+      "description": "CLI 不可用，改用 codex-http（本地凭证 + HTTP responses）"
+    },
+    {
+      "id": "imagegen",
+      "name": "朽木生图（内核直连·零积分）",
+      "command": "python",
+      "args": [
+        "${PROJECT}/gen/gen_image.py",
+        "-f",
+        "{{promptFile}}",
+        "-s",
+        "9:16",
+        "-o",
+        "{{taskDir}}/image.png"
+      ],
+      "inputMode": "argv",
+      "detect": "python",
+      "enabled": "auto",
+      "cwd": "${PROJECT}"
+    },
+    {
+      "id": "gemini-cli",
+      "name": "Gemini CLI",
+      "command": "gemini",
+      "args": [
+        "-p",
+        "{{prompt}}"
+      ],
+      "inputMode": "argv",
+      "detect": "gemini",
+      "enabled": "auto"
+    },
+    {
+      "id": "opencode",
+      "name": "OpenCode",
+      "command": "opencode",
+      "args": [
+        "run",
+        "{{prompt}}"
+      ],
+      "inputMode": "argv",
+      "detect": "opencode",
+      "enabled": "auto"
+    }
+  ],
+  "custom": []
+}

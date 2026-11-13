@@ -1,0 +1,18 @@
+{
+  "name": "agent-console",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "CLI-first multi-agent workbench with a zero-dependency web console",
+  "bin": {
+    "agentctl": "bin/agentctl.js"
+  },
+  "scripts": {
+    "start": "node bin/agentctl.js serve",
+    "demo": "node bin/agentctl.js demo",
+    "ctl": "node bin/agentctl.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
